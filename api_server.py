@@ -3,6 +3,8 @@ from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request
 import json 
 import datetime
+import hashlib
+import os.path
 
 app = Flask(__name__)
 
@@ -72,6 +74,20 @@ def get_posts():
                 if datetime.datetime.strptime(post['published'], '%Y-%m-%d %H:%M:%S.%f').year == year
                 and datetime.datetime.strptime(post['published'], '%Y-%m-%d %H:%M:%S.%f').month == month
             ]
+        
+        for post in filtered_posts:
+            post['screenshot']=''
+            if post['post_url'] is not None:
+                post_url_bytes = post["post_url"].encode('utf-8')
+                post_md5 = hashlib.md5(post_url_bytes).hexdigest()
+                # Check if a screenshot file exists for the post
+                screenshot_file = f"/var/www/ransomware.live/docs/screenshots/posts/{post_md5}.png"
+                print(screenshot_file)
+                if  os.path.exists(screenshot_file):
+                    # If a screenshot file does  exist
+                    post['screenshot']=f"https://images.ransomare.live/screenshots/posts/{post_md5}.png"
+
+        
         
         return jsonify(filtered_posts)
     except Exception as e:
