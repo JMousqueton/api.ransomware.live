@@ -1,114 +1,128 @@
-import logging
-from logging.handlers import RotatingFileHandler
-from flask import Flask, jsonify, request
-import json 
+from flask import Flask, jsonify, redirect,  url_for
+import json
+#from flask_restful import Api, Resource
+from flask_restx import Api, Resource, Namespace
+from flasgger import Swagger, swag_from
 import datetime
 import hashlib
 import os.path
+import requests
+
+
+
+
 
 app = Flask(__name__)
+api = Api(app, title='Ransomware.live API',
+          description='API to query Ransomware.live data.',
+          doc='/apidocs/',
+          version='1.1')
+swagger = Swagger(app)
 
-# Configure logging with log rotation
-log_file = '/var/log/api_error.log'
-max_log_size = 10 * 1024 * 1024  # 10 MB
-backup_count = 5  # Number of backup log files
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# Endpoint for retrieving recent posts
+class RecentPosts(Resource):
+    """Retrieve the 100 most recent posts."""
 
-rotating_handler = RotatingFileHandler(log_file, maxBytes=max_log_size, backupCount=backup_count)
-rotating_handler.setFormatter(formatter)
-rotating_handler.setLevel(logging.ERROR)
-
-app.logger.addHandler(rotating_handler)
-
-@app.route('/v1.0/groups', methods=['GET'])
-def get_groups():
-    try:
-        # Read the groups.json file
-        with open('groups.json') as file:
-            groups_data = json.load(file)
-
-        # Check if a group name is provided in the request query parameters
-        group_name = request.args.get('name')
-        # Check if location_available parameter is set to true
-        available = request.args.get('available')
-
-        # If a group name is provided, filter the groups based on the name
-        if group_name:
-            filtered_groups = [group for group in groups_data if group['name'] == group_name]
-        else:
-            filtered_groups = groups_data
-
-        # If location_available is set to true, filter the groups based on the availability of at least one location
-        if available == 'true':
-            filtered_groups = [group for group in filtered_groups if any(location['available'] for location in group['locations'])]
-
-        return jsonify(filtered_groups)
-    except Exception as e:
-        app.logger.error(f"Error in get_groups: {str(e)}")
-        return jsonify({'error': 'An error occurred while processing the request.'}), 500
-
-@app.route('/v1.0/victims', methods=['GET'])
-def get_posts():
-    try:
-        # Read the posts.json file
+    @swag_from('swagger_docs/recent_posts.yml')
+    def get(self):
         with open('posts.json') as file:
             posts_data = json.load(file)
-
-        # Check if a group_name is provided in the request query parameters
-        group_name = request.args.get('group')
-        year = request.args.get('year')
-        month = request.args.get('month')
-
-        # If a group_name is provided, filter the posts based on the group_name
-        if group_name:
-            filtered_posts = [post for post in posts_data if post['group_name'] == group_name]
-        else:
-            filtered_posts = posts_data
-
-        # If both year and month are provided, filter the posts based on the published date
-        if year and month:
-            year = int(year)
-            month = int(month)
-            filtered_posts = [
-                post for post in filtered_posts
-                if datetime.datetime.strptime(post['published'], '%Y-%m-%d %H:%M:%S.%f').year == year
-                and datetime.datetime.strptime(post['published'], '%Y-%m-%d %H:%M:%S.%f').month == month
-            ]
-        
-        for post in filtered_posts:
+        for post in posts_data:
             post['screenshot']=''
             if post['post_url'] is not None:
                 post_url_bytes = post["post_url"].encode('utf-8')
                 post_md5 = hashlib.md5(post_url_bytes).hexdigest()
                 # Check if a screenshot file exists for the post
                 screenshot_file = f"/var/www/ransomware.live/docs/screenshots/posts/{post_md5}.png"
-                print(screenshot_file)
-                if  os.path.exists(screenshot_file):
+                if os.path.exists(screenshot_file):
                     # If a screenshot file does  exist
-                    post['screenshot']=f"https://images.ransomare.live/screenshots/posts/{post_md5}.png"
+                    post['screenshot']=f"https://images.ransomware.live/screenshots/posts/{post_md5}.png"
+        sorted_posts = sorted(posts_data[-100:], key=lambda post: post['published'], reverse=True)
+        return jsonify(sorted_posts)
 
-        
-        
-        return jsonify(filtered_posts)
-    except Exception as e:
-        app.logger.error(f"Error in get_posts: {str(e)}")
-        return jsonify({'error': 'An error occurred while processing the request.'}), 500
+api.add_resource(RecentPosts, '/recent', endpoint='recent')
+
+# Endpoint for retrieving all groups
+class AllGroups(Resource):
+    """Retrieve all groups."""
+
+    @swag_from('swagger_docs/all_groups.yml')
+    def get(self):
+        with open('groups.json') as file:
+                groups_data = json.load(file)
+        return jsonify(groups_data)
+
+api.add_resource(AllGroups, '/groups', endpoint='groups')
+
+# Endpoint for retrieving a specific group
+class SpecificGroup(Resource):
+    """Retrieve a specific group by its name."""
+
+    @swag_from('swagger_docs/specific_group.yml')
+    def get(self, group_name):
+        with open('groups.json') as file:
+                groups_data = json.load(file)
+        for group in groups_data:
+            if group['name'] == group_name:
+                return jsonify(group)
+        return jsonify({"error": "Group not found"}), 404
+
+api.add_resource(SpecificGroup, '/group/<string:group_name>', endpoint='group')
+
+# Endpoint for retrieving posts matching year and month
+class Victims(Resource):
+    """Retrieve posts where year and month match the 'discovered' field."""
+
+    @swag_from('swagger_docs/victims.yml')
+    def get(self, year, month):
+        with open('posts.json') as file:
+            posts_data = json.load(file)
+        for post in posts_data:
+            post['discovered'] = str(post['discovered'])
+        month = str(month).zfill(2)
+        matching_posts = [post for post in posts_data if post['discovered'].startswith(f"{str(year)}-{str(month)}")]
+        for post in matching_posts:
+            post['screenshot']=''
+            if post['post_url'] is not None:
+                post_url_bytes = post["post_url"].encode('utf-8')
+                post_md5 = hashlib.md5(post_url_bytes).hexdigest()
+                # Check if a screenshot file exists for the post
+                screenshot_file = f"/var/www/ransomware.live/docs/screenshots/posts/{post_md5}.png"
+                if os.path.exists(screenshot_file):
+                    # If a screenshot file does  exist
+                    post['screenshot']=f"https://images.ransomware.live/screenshots/posts/{post_md5}.png"
+        return jsonify(matching_posts)
+
+api.add_resource(Victims, '/victims/<int:year>/<int:month>', endpoint='victims')
+
+# Endpoint for retrieving posts of a specific group
+class GroupVictims(Resource):
+    """Retrieve posts where group_name matches the 'group_name' field."""
+
+    @swag_from('swagger_docs/group_victims.yml')
+    def get(self, group_name):
+        with open('posts.json') as file:
+            posts_data = json.load(file)
+        matching_posts = [post for post in posts_data if post['group_name'] == group_name]
+        for post in matching_posts:
+            post['screenshot']=''
+            if post['post_url'] is not None:
+                post_url_bytes = post["post_url"].encode('utf-8')
+                post_md5 = hashlib.md5(post_url_bytes).hexdigest()
+                # Check if a screenshot file exists for the post
+                screenshot_file = f"/var/www/ransomware.live/docs/screenshots/posts/{post_md5}.png"
+                if os.path.exists(screenshot_file):
+                    # If a screenshot file does  exist
+                    post['screenshot']=f"https://images.ransomware.live/screenshots/posts/{post_md5}.png"
+        return jsonify(matching_posts)
+
+api.add_resource(GroupVictims, '/groupvictims/<string:group_name>', endpoint='groupvictims')
 
 
-@app.route('/v1.0/stats', methods=['GET'])
-def get_stats():
-    try:
-        # Read the stats.json file
-        with open('stats.json') as file:
-            stats_data = json.load(file)
-
-        return jsonify(stats_data)
-    except Exception as e:
-        app.logger.error(f"Error in get_stats: {str(e)}")
-        return jsonify({'error': 'An error occurred while processing the request.'}), 500
-
-
+# Custom error handler for 404 Not Found
+@app.errorhandler(404)
+def not_found_error_handler(error):
+    return redirect(url_for('flasgger.apidocs'))
 
 if __name__ == '__main__':
-    app.run()  
-
+    app.run()

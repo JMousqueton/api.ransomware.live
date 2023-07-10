@@ -1,0 +1,33 @@
+swagger: '2.0'
+info:
+  title: Group Victims API
+  description: Retrieve vicitms of a specific group
+  version: '1.0'
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /groupvictims/{group_name}:
+    get:
+      tags:
+        - Group Victims
+      summary: Retrieve posts of a specific group
+      description: Retrieve all posts where post['group_name'] matches the provided group_name.
+      parameters:
+        - name: group_name
+          in: path
+          description: Name of the group to retrieve posts for.
+          required: true
+          type: string
+      responses:
+        '200':
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Post'
+        '404':
+          description: Group not found
+        '500':
+          description: Internal server error

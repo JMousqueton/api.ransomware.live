@@ -1,0 +1,23 @@
+swagger: '2.0'
+info:
+  title: Specific Group API
+  description: Retrieve a specific group by its name.
+  version: '1.0'
+paths:
+  /group/{group_name}:
+    get:
+      tags:
+        - Specific Group
+      summary: Retrieve a specific group
+      description: Retrieve a specific group by its name
+      parameters:
+        - name: group_name
+          in: path
+          type: string
+          required: true
+          description: The name of the group
+      responses:
+        '200':
+          description: The group information
+        '404':
+          description: Group not found

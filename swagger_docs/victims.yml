@@ -1,0 +1,35 @@
+/victims/{year}/{month}:
+  get:
+    summary: Retrieve posts matching year and month
+    description: Retrieve posts where the year and month match the 'discovered' field of each post.
+    parameters:
+      - name: year
+        in: path
+        description: Year value
+        required: true
+        schema:
+          type: integer
+      - name: month
+        in: path
+        description: Month value
+        required: true
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: OK
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+      '404':
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error:
+                  type: string

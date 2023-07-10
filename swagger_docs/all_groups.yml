@@ -1,0 +1,15 @@
+swagger: '2.0'
+info:
+  title: All Groups API
+  description: Retrieve all groups.
+  version: '1.0'
+paths:
+  /groups:
+    get:
+      tags:
+        - All Groups
+      summary: Retrieve all groups
+      description: Retrieve all groups
+      responses:
+        '200':
+          description: List of all groups

@@ -1,0 +1,15 @@
+swagger: '2.0'
+info:
+  title: Recent Posts API
+  description: Retrieve the 100 most recent posts.
+  version: '1.0'
+paths:
+  /recent:
+    get:
+      tags:
+        - Recent Posts
+      summary: Retrieve the 100 most recent posts
+      description: Retrieve the 100 most recent posts
+      responses:
+        '200':
+          description: List of recent posts
