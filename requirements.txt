@@ -1,3 +1,4 @@
-flask
-flask_restx
-flagger
+Flask==2.0.1
+Flask-RESTx==0.5.2
+Flasgger==0.9.5
+requests==2.26.0
