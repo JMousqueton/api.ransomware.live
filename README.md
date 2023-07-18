@@ -55,7 +55,7 @@ The server will start running locally, and you can access the API at http://loca
 
 For detailed information about the available endpoints, parameters, and responses, you can visit the API documentation generated using Swagger. Open your web browser and navigate to:
 
-    ```
+    ```bash
     http://localhost:5000/apidocs
     ```
 
