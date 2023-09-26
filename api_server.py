@@ -13,6 +13,16 @@ import hashlib
 import os.path
 import requests
 
+''' 
+   Configuration for API Server of Ransomware.live 
+'''
+posts_url = "https://data.ransomware.live/posts.json"
+groups_url = "https://data.ransomware.live/groups.json"
+cyberattacks_url = "https://raw.githubusercontent.com/Casualtek/Cyberwatch/main/cyberattacks.json"
+screenshot_path =  "/var/www/ransomware.live/docs/screenshots/posts/" 
+screenshot_url = "https://images.ransomware.live/screenshots/posts/"
+
+
 app = Flask(__name__)
 api = Api(app, title='Ransomware.live API',
           description='API to query Ransomware.live data.',
@@ -28,7 +38,7 @@ class RecentPosts(Resource):
     def get(self):
         #with open('posts.json') as file:
         #    posts_data = json.load(file)
-        response = requests.get("https://data.ransomware.live/posts.json")
+        response = requests.get(posts_url)
         if response.status_code == 200:
             posts_data = response.json()
             for post in posts_data:
@@ -37,10 +47,10 @@ class RecentPosts(Resource):
                     post_url_bytes = post["post_url"].encode('utf-8')
                     post_md5 = hashlib.md5(post_url_bytes).hexdigest()
                     # Check if a screenshot file exists for the post
-                    screenshot_file = f"/var/www/ransomware.live/docs/screenshots/posts/{post_md5}.png"
+                    screenshot_file = f"{screenshot_path}{post_md5}.png"
                     if os.path.exists(screenshot_file):
                         # If a screenshot file does  exist
-                        post['screenshot']=f"https://images.ransomware.live/screenshots/posts/{post_md5}.png"
+                        post['screenshot']=f"{screenshot_url}{post_md5}.png"
             sorted_posts = sorted(posts_data[-100:], key=lambda post: post['published'], reverse=True)
             return jsonify(sorted_posts)
         else:
@@ -53,7 +63,7 @@ class AllGroups(Resource):
     def get(self):
         #with open('groups.json') as file:
         #        groups_data = json.load(file)
-        response = requests.get("https://data.ransomware.live/groups.json")
+        response = requests.get(groups_url)
         if response.status_code == 200:
             groups_data = response.json()
             return jsonify(groups_data)
@@ -67,7 +77,7 @@ class SpecificGroup(Resource):
     def get(self, group_name):
         #with open('groups.json') as file:
         #        groups_data = json.load(file)
-        response = requests.get("https://data.ransomware.live/groups.json")
+        response = requests.get(groups_url)
         if response.status_code == 200:
             groups_data = response.json()
             for group in groups_data:
@@ -84,7 +94,7 @@ class Victims(Resource):
     def get(self, year, month):
         #with open('posts.json') as file:
         #    posts_data = json.load(file)
-        response = requests.get("https://data.ransomware.live/posts.json")
+        response = requests.get(posts_url)
         if response.status_code == 200:
             posts_data = response.json()
             for post in posts_data:
@@ -97,10 +107,10 @@ class Victims(Resource):
                     post_url_bytes = post["post_url"].encode('utf-8')
                     post_md5 = hashlib.md5(post_url_bytes).hexdigest()
                     # Check if a screenshot file exists for the post
-                    screenshot_file = f"/var/www/ransomware.live/docs/screenshots/posts/{post_md5}.png"
+                    screenshot_file = f"{screenshot_path}{post_md5}.png"
                     if os.path.exists(screenshot_file):
                         # If a screenshot file does  exist
-                        post['screenshot']=f"https://images.ransomware.live/screenshots/posts/{post_md5}.png"
+                        post['screenshot']=f"{screenshot_url}{post_md5}.png"
             return jsonify(matching_posts)
         else:
             return jsonify({"error": "Failed to fetch data from the source"}), response.status_code
@@ -110,7 +120,7 @@ class GroupVictims(Resource):
     """Retrieve posts where group_name matches the 'group_name' field."""
     @swag_from('swagger_docs/group_victims.yml')
     def get(self, group_name):
-        response = requests.get("https://data.ransomware.live/posts.json")
+        response = requests.get(posts_url)
         if response.status_code == 200:
             posts_data = response.json()
         #with open('posts.json') as file:
@@ -122,10 +132,10 @@ class GroupVictims(Resource):
                     post_url_bytes = post["post_url"].encode('utf-8')
                     post_md5 = hashlib.md5(post_url_bytes).hexdigest()
                     # Check if a screenshot file exists for the post
-                    screenshot_file = f"/var/www/ransomware.live/docs/screenshots/posts/{post_md5}.png"
+                    screenshot_file = f"{screenshot_path}{post_md5}.png"
                     if os.path.exists(screenshot_file):
                         # If a screenshot file does  exist
-                        post['screenshot']=f"https://images.ransomware.live/screenshots/posts/{post_md5}.png"
+                        post['screenshot']=f"{screenshot_url}{post_md5}.png"
             return jsonify(matching_posts)
         else:
             return jsonify({"error": "Failed to fetch data from the source"}), response.status_code
@@ -135,7 +145,7 @@ class RecentCyberattacks(Resource):
     """Retrieve the last 100 entries from the cyberattacks.json file sorted by date."""
     @swag_from('swagger_docs/recent_cyberattacks.yml')
     def get(self):
-        response = requests.get("https://raw.githubusercontent.com/Casualtek/Cyberwatch/main/cyberattacks.json")
+        response = requests.get(cyberattacks_url)
         if response.status_code == 200:
             cyberattacks_data = response.json()
             #sorted_cyberattacks = sorted(cyberattacks_data, key=lambda entry: entry['date'], reverse=False)
