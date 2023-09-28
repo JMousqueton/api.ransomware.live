@@ -2,4 +2,4 @@ Flask==2.0.1
 Flask-RESTx==0.5.1
 Flasgger==0.9.5
 requests==2.26.0
-werkzeug==2.1.2
+werkzeug==2.2.3
