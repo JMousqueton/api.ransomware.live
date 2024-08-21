@@ -22,14 +22,15 @@ import warnings # to remove warning about in memory
 # Suppress the specific UserWarning about in-memory storage for Flask-Limiter
 warnings.filterwarnings("ignore", category=UserWarning, message=".*Using the in-memory storage.*")
 
-posts_url = "https://data.ransomware.live/posts.json"
-posts_path = "../ransomware.live/posts.json"
+posts_url = "https://data.ransomware.live/victims.json"
+posts_path = "/var/www/ransomware-ng/data/victims.json"
 groups_url = "https://data.ransomware.live/groups.json"
-groups_path = "../ransomware.live/groups.json"
+groups_path = "/var/www/ransomware-ng/data/groups.json"
 cyberattacks_url = "https://raw.githubusercontent.com/Casualtek/Cyberwatch/main/cyberattacks.json"
-screenshot_path =  "/var/www/ransomware.live/docs/screenshots/posts/" 
+screenshot_path =  "/var/www/ransomware-ng/docs/screenshots/posts/" 
 screenshot_url = "https://images.ransomware.live/screenshots/posts/"
-hudsonrock_path = "../ransomware.live/hudsonrock.json"
+hudsonrock_path = "/var/www/ransomware-ng/data/hudsonrock.json"
+ttps_path = "/var/www/ransomware-ng/data/ttps.json" 
 headers = {
     'User-Agent': 'Ransomware.live API v0.2'
 }
@@ -100,16 +101,51 @@ class AllGroups(Resource):
         return jsonify(groups_data)
 
 # Endpoint for retrieving a specific group
+#class SpecificGroup(Resource):
+#    """Retrieve a specific group by its name."""
+#    @swag_from('swagger_docs/specific_group.yml')
+#    def get(self, group_name):
+#        with open(groups_path) as file:
+#            groups_data = json.load(file)
+#        for group in groups_data:
+#            if group['name'] == group_name:
+#                return jsonify(group)
+#        return {"error": "Group not found"}, 404
+
+
 class SpecificGroup(Resource):
     """Retrieve a specific group by its name."""
     @swag_from('swagger_docs/specific_group.yml')
     def get(self, group_name):
+        # Load the existing group data
         with open(groups_path) as file:
             groups_data = json.load(file)
+        
+        # Load the ttps.json data
+        with open(ttps_path) as ttps_file:
+            ttps_data = json.load(ttps_file)
+
+        # Find the specific group
         for group in groups_data:
             if group['name'] == group_name:
+                # Find the corresponding ttps data
+                ttps_list = []
+                for ttps_group in ttps_data:
+                    if ttps_group['group_name'] == group_name.lower().replace(" ", ""):
+                        # Remove the "group_name" entry from the ttps_group
+                        ttps_group_without_name = {k: v for k, v in ttps_group.items() if k != 'group_name'}
+                        # Add the ttps information to the ttps_list
+                        ttps_list.append(ttps_group_without_name)
+                
+                # Add the ttps list to the group information
+                group['ttps'] = ttps_list
+
+                # Return the updated group data with ttps information
                 return jsonify(group)
+        
+        # If the group is not found, return an error
         return {"error": "Group not found"}, 404
+
 
 
 # Endpoint for retrieving posts matching year and month
