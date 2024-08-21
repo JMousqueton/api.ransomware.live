@@ -246,7 +246,7 @@ class Country(Resource):
         with open('country.json', 'r') as file:
             country_data = json.load(file)
         for country in country_data:
-            if country['id'] == id:
+            if country['id'] == id.lower():
                 return jsonify({"title": country["title"]})
                 break
         return jsonify({"error": "Country not found"}), 404
