@@ -1,0 +1,34 @@
+swagger: '2.0'
+info:
+  title: By Country Posts API
+  description: Retrieve all posts of a specific country.
+  version: '1.0'
+paths:
+  /countryattacks/{country_code}:
+    get:
+      tags:
+        - Specific Country
+      summary: Retrieve all posts of a specific country
+      description: Retrieve all posts of a specific country by country code
+      parameters:
+        - name: country_code
+          in: path
+          type: string
+          required: true
+          description: The code of the country
+        - name: discovered_from
+          in: query
+          type: string
+          required: false
+          description: The datetime from
+        - name: discovered-to
+          in: query
+          type: string
+          required: false
+          description: The datetime to
+      responses:
+        '200':
+          description: List of posts
+        '400':
+          description: Invalid parameter
+

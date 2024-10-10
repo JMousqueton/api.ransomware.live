@@ -4,7 +4,7 @@
 API Server for Ransomware.live 
 By Julien Mousqueton 
 '''
-from flask import Flask, jsonify, redirect,  url_for
+from flask import Flask, jsonify, redirect,  url_for, request, make_response
 import json
 from flask_restx import Api, Resource, Namespace
 from flasgger import Swagger, swag_from
@@ -18,6 +18,7 @@ from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import warnings # to remove warning about in memory 
+from datetime import datetime
 
 # Suppress the specific UserWarning about in-memory storage for Flask-Limiter
 warnings.filterwarnings("ignore", category=UserWarning, message=".*Using the in-memory storage.*")
@@ -220,7 +221,7 @@ class RecentCyberattacks(Resource):
             return recentnews
             # return jsonify(sorted_cyberattacks[-100:])
         else:
-            return jsonify({"error": "Failed to fetch data from the source"}), response.status_code
+            return make_response(jsonify({"error": "Failed to fetch data from the source"}), response.status_code)
 
 
 class AllCyberattacks(Resource):
@@ -238,7 +239,7 @@ class AllCyberattacks(Resource):
             return recentnews
             # return jsonify(sorted_cyberattacks[-100:])
         else:
-            return jsonify({"error": "Failed to fetch data from the source"}), response.status_code
+            return make_response(jsonify({"error": "Failed to fetch data from the source"}), response.status_code)
 
 class Country(Resource):
     @swag_from('swagger_docs/country.yml')
@@ -249,21 +250,49 @@ class Country(Resource):
             if country['id'] == id.lower():
                 return jsonify({"title": country["title"]})
                 break
-        return jsonify({"error": "Country not found"}), 404
+        return make_response(jsonify({"error": "Country not found"}), 404)
 
 class CountryAttacks(Resource):
     @swag_from('swagger_docs/country_attacks.yml')
     def get(self, country_code):
+        discovered_from = request.args.get('discovered_from')
+        discovered_to = request.args.get('discovered_to')
+        try:
+            if discovered_from:
+                discovered_from = datetime.fromisoformat(discovered_from)
+            if discovered_to:
+                discovered_to = datetime.fromisoformat(discovered_to)
+        except ValueError:
+            return make_response(jsonify({"error": "Invalid parameter"}), 400)
+
+        
         response = requests.get(posts_url)
         if response.status_code == 200:
             posts_data = response.json()
-            country_attacks = [
-                post for post in posts_data
-                if post.get('country') == country_code.upper()
-            ]
+
+            if discovered_from and discovered_to:
+                country_attacks = [
+                    post for post in posts_data
+                    if (post.get('country') == country_code.upper()) and (discovered_from <= datetime.fromisoformat(post.get('discovered')) <= discovered_to)
+                ]
+            elif discovered_from:
+                country_attacks = [
+                    post for post in posts_data
+                    if (post.get('country') == country_code.upper()) and (discovered_from <= datetime.fromisoformat(post.get('discovered')))
+                ]
+            elif discovered_to:
+                country_attacks = [
+                    post for post in posts_data
+                    if (post.get('country') == country_code.upper()) and (datetime.fromisoformat(post.get('discovered')) <= discovered_to)
+                ]
+            else:
+                country_attacks = [
+                    post for post in posts_data
+                    if post.get('country') == country_code.upper()
+                ]
             return jsonify(country_attacks)
         else:
-            return jsonify({"error": "Failed to fetch data from the source"}), response.status_code
+            return make_response(jsonify({"error": "Failed to fetch data from the source"}), response.status_code)
 
 
 # Endpoint definitions
