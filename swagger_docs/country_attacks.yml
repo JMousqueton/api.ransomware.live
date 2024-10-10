@@ -4,7 +4,7 @@ info:
   description: Retrieve all posts of a specific country.
   version: '1.0'
 paths:
-  /countryattacks{country_code}:
+  /countryattacks/{country_code}:
     get:
       tags:
         - Specific Country
